@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>銀河旋渦 XR</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #020308; color: #dfe6ff;
+    font: 14px/1.5 system-ui, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+  canvas#view { display: block; touch-action: none; }
+  #hud { position: fixed; left: 16px; top: 14px; max-width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+  #hud h1 { margin: 0 0 2px; font-size: 18px; font-weight: 600; letter-spacing: .04em; }
+  #hud .sub { font-size: 12px; opacity: .7; }
+  #stats { margin-top: 6px; font-variant-numeric: tabular-nums; font-size: 13px; }
+  #stir { min-height: 1.4em; font-size: 12px; color: #9fe8ff; }
+  #tips { position: fixed; left: 16px; bottom: 14px; max-width: min(460px, calc(100vw - 32px)); font-size: 12.5px;
+    background: rgba(8, 12, 28, .62); border: 1px solid rgba(140, 160, 255, .18); border-radius: 10px; padding: 10px 12px;
+    backdrop-filter: blur(6px); }
+  #tips b { color: #ffd59e; font-weight: 600; }
+  #tips ul { margin: 4px 0 0; padding-left: 18px; }
+  #tips button { float: right; background: none; border: 0; color: #9aa6d8; cursor: pointer; font: inherit; }
+  #fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; }
+  #fallback[hidden] { display: none; }
+  .lil-gui { --width: 250px; }
+  #xr { position: fixed; right: 16px; bottom: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  #xr button.big { font: 600 15px/1 inherit; font-family: inherit; padding: 11px 16px; border-radius: 10px; cursor: pointer;
+    border: 1px solid rgba(160, 200, 255, .45); background: rgba(40, 70, 160, .55); color: #fff; }
+  #xr button.big:hover { background: rgba(60, 100, 210, .7); }
+  #xr button[hidden] { display: none; }
+  #xr-msg { font-size: 12px; color: #ffb4a0; max-width: 260px; text-align: right; }
+  #share { background: rgba(8, 12, 28, .72); border: 1px solid rgba(140, 160, 255, .18); border-radius: 10px;
+    padding: 8px 10px; font-size: 12px; text-align: center; }
+  #share summary { cursor: pointer; color: #b9c6ff; }
+  #share svg { width: 132px; height: 132px; display: block; margin: 8px auto 4px; border-radius: 6px; }
+  #share code { color: #ffd59e; user-select: all; }
+  /* SBS:隱藏所有介面,只留兩邊各一顆離開鈕 */
+  .sbs-exit { display: none; }
+  body.sbs #hud, body.sbs #tips, body.sbs #xr { display: none; }
+  body.sbs .sbs-exit { display: block; position: fixed; bottom: 12px; transform: translateX(-50%); opacity: .35;
+    background: rgba(0,0,0,.5); color: #fff; border: 1px solid #fff4; border-radius: 8px; padding: 6px 12px; font: inherit; }
+  body.sbs .sbs-exit:hover { opacity: 1; }
+  #sbs-exit-l { left: 25%; } #sbs-exit-r { left: 75%; }
+  @media (max-width: 640px) { #xr { bottom: auto; top: 12px; } #share { display: none; } }
+  @media (max-width: 640px) { #tips { font-size: 11.5px; } #hud h1 { font-size: 16px; } }
+</style>
+</head>
+<body>
+<div id="hud">
+  <h1>銀河旋渦 XR · 50,000 顆粒子</h1>
+  <div class="sub">three.js r187 · TSL compute · 渲染後端:<span id="backend">偵測中…</span></div>
+  <div id="stats">載入中…</div>
+  <div id="stir"></div>
+</div>
+<div id="tips">
+  <button id="tips-x" aria-label="收起說明">收起</button>
+  <b>試試看</b>
+  <ul>
+    <li>滑鼠在銀河上移動:把星塵推開,放手後會被引力拉回。</li>
+    <li>雙擊(手機點兩下):在該處引爆一次超新星衝擊波。</li>
+    <li>拖曳旋轉鏡頭、滾輪縮放;按住 Shift 拖曳 = 撥動粒子。</li>
+    <li>把「旋臂扭轉」拉到 0 再拉到 2,看旋臂怎麼捲起來;「旋臂數」改 2 → 6。</li>
+    <li>空白鍵暫停自轉,R 鍵全部重設。</li>
+    <li><b>Quest 3</b>:按「進入 VR」。扳機引爆衝擊波、把手伸進銀河撥動星塵、搖桿縮放旋轉。</li>
+    <li><b>XREAL One</b>:按「SBS 3D」,再在眼鏡選單開 3D 模式 → Half SBS。</li>
+  </ul>
+</div>
+<div id="xr">
+  <button id="vr-btn" class="big" hidden>進入 VR</button>
+  <button id="sbs-btn" class="big" title="XREAL One 等眼鏡:在眼鏡選單開啟 3D 模式 → Half SBS">SBS 3D(XREAL)</button>
+  <div id="xr-msg"></div>
+  <details id="share">
+    <summary>在頭盔或手機上開啟</summary>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 31 31" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h31v31H0z"/><path stroke="#0b0f1e" d="M1 1.5h7m1 0h2m1 0h3m1 0h1m1 0h3m2 0h7M1 2.5h1m5 0h1m1 0h1m2 0h1m1 0h1m2 0h1m1 0h1m1 0h1m1 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m3 0h3m2 0h1m6 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h1m2 0h1m4 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m2 0h1m1 0h2m1 0h2m3 0h1m2 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m2 0h2m2 0h1m2 0h1m2 0h2m1 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h3m1 0h1m2 0h1m1 0h2M1 9.5h1m1 0h2m1 0h3m4 0h2m3 0h4m1 0h1m2 0h1m1 0h2M1 10.5h1m1 0h1m2 0h1m1 0h4m1 0h3m1 0h5m1 0h3m3 0h1M1 11.5h1m3 0h3m1 0h1m1 0h2m1 0h1m4 0h1m1 0h2m2 0h1m1 0h2M1 12.5h2m3 0h1m10 0h1m1 0h2m1 0h3m4 0h1M2 13.5h1m1 0h1m1 0h2m1 0h2m1 0h2m1 0h1m1 0h4m5 0h2M1 14.5h1m2 0h2m3 0h1m1 0h1m1 0h1m1 0h3m2 0h1m2 0h1m3 0h3M4 15.5h1m1 0h2m2 0h1m1 0h3m3 0h3m1 0h1m1 0h2m1 0h3M1 16.5h3m2 0h1m5 0h2m1 0h3m3 0h4m3 0h1M1 17.5h5m1 0h1m1 0h1m2 0h1m2 0h2m2 0h1m4 0h3m1 0h1M3 18.5h1m1 0h1m6 0h2m1 0h3m3 0h2m1 0h1m1 0h3M1 19.5h1m3 0h3m1 0h4m1 0h5m2 0h1m3 0h1m1 0h1M3 20.5h1m2 0h1m1 0h2m2 0h4m2 0h2m1 0h2m1 0h2m1 0h1M2 21.5h1m1 0h9m1 0h3m1 0h2m1 0h7M9 22.5h1m1 0h2m4 0h1m1 0h1m1 0h1m3 0h5M1 23.5h7m1 0h1m3 0h1m1 0h1m2 0h1m1 0h2m1 0h1m1 0h2m1 0h1M1 24.5h1m5 0h1m1 0h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m3 0h2m2 0h1M1 25.5h1m1 0h3m1 0h1m9 0h2m2 0h5m1 0h1M1 26.5h1m1 0h3m1 0h1m1 0h3m2 0h1m1 0h2m2 0h1m3 0h3m2 0h1M1 27.5h1m1 0h3m1 0h1m1 0h2m2 0h1m5 0h1m4 0h1m2 0h1m1 0h1M1 28.5h1m5 0h1m4 0h2m2 0h1m2 0h1m1 0h1m1 0h2m1 0h1m1 0h1M1 29.5h7m1 0h1m1 0h3m1 0h1m3 0h3m1 0h2m1 0h1m1 0h1"/></svg>
+
+    <code>shogun5.github.io/galaxy-xr</code>
+  </details>
+</div>
+<button id="sbs-exit-l" class="sbs-exit">離開 3D(Esc)</button>
+<button id="sbs-exit-r" class="sbs-exit">離開 3D(Esc)</button>
+<div id="fallback" hidden><div><h2>無法顯示 3D 畫面</h2><p id="fallback-msg"></p></div></div>
+<!--BUNDLE-->
+<script>
+  (() => {
+    const ul = document.querySelector('#tips ul'), b = document.getElementById('tips-x');
+    const set = h => { ul.hidden = h; b.textContent = h ? '展開' : '收起'; };
+    if (innerWidth < 640 || innerHeight < 500) set(true);   // 小螢幕預設收起,避免蓋住銀河
+    b.onclick = () => set(!ul.hidden);
+  })();
+</script>
+</body>
+</html>

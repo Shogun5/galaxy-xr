@@ -1,0 +1,14 @@
+{
+  "name": "galaxy-xr",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node src/build.mjs src/main.js index.html \"銀河旋渦 XR\" src/template.html"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "iwer": "2.8.0",
+    "playwright": "*",
+    "three": "0.187.0"
+  }
+}
